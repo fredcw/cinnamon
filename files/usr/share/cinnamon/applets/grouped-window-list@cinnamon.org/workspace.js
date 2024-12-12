@@ -32,7 +32,10 @@ class Workspace {
             },
             updateFocusState: (focusedAppId) => {
                 this.appGroups.forEach( appGroup => {
-                    if (focusedAppId === appGroup.groupState.appId) return;
+                    if (focusedAppId === appGroup.groupState.appId) {
+                        appGroup.resetNotificationCount();
+                        return;
+                    }
                     appGroup.onFocusChange(false);
                 });
             }
@@ -53,6 +56,7 @@ class Workspace {
         // Ugly change: refresh the removed app instances from all workspaces
         this.signals.connect(this.metaWorkspace, 'window-removed', (...args) => this.windowRemoved(...args));
         this.signals.connect(global.window_manager, 'switch-workspace' , (...args) => this.reloadList(...args));
+        Main.messageTray.connect('notify-applet-update', (mtray, notification) => this.notificationReceived(mtray, notification));
         this.on_orientation_changed(null, true);
     }
 
@@ -75,6 +79,44 @@ class Workspace {
             windowCount += appGroup.groupState.metaWindows.length;
         });
         return windowCount;
+    }
+
+    notificationReceived(mtray, notification) {
+        const guessFlatpakAppIdFromDesktopEntryHint = (desktopEntry) => {
+            let tryAppId = desktopEntry + '.desktop:flatpak';
+            if (this.appGroups.some(appGroup => appGroup.groupState.appId === tryAppId)) {
+                return tryAppId;
+            }            
+            const exceptions = {
+                "vivaldi-stable": "com.vivaldi.Vivaldi",
+                "brave-browser": "com.brave.Browser",
+                "google-chrome": "com.google.Chrome",
+                "microsoft-edge": "com.microsoft.Edge",
+                "opera": "com.opera.Opera"
+            };
+            if (exceptions[desktopEntry]) {
+                tryAppId = exceptions[desktopEntry] + '.desktop:flatpak';
+                if (this.appGroups.some(appGroup => appGroup.groupState.appId === tryAppId)) {
+                    return tryAppId;
+                }
+            }
+        };
+
+        let appId = notification.source.app?.get_id();
+        if (!appId) {
+            appId = guessFlatpakAppIdFromDesktopEntryHint(notification.desktopEntry);
+        }
+        if (!appId) {
+            global.logError(`GWL: Failed to find appId for notification`);
+            return;
+        }
+
+        this.appGroups.forEach(appGroup => {
+            if (appId === appGroup.groupState.appId) {
+                appGroup.incrementNotificationCount();
+                return;
+            }
+        });
     }
 
     closeAllHoverMenus(cb) {
