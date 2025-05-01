@@ -10,6 +10,7 @@ const PopupMenu = imports.ui.popupMenu;
 const Mainloop = imports.mainloop;
 const {SignalManager} = imports.misc.signalManager;
 const {unref} = imports.misc.util;
+const NotificationDestroyedReason = imports.ui.messageTray.NotificationDestroyedReason;
 
 const createStore = require('./state');
 const {AppMenuButtonRightClickMenu, HoverMenuController, AppThumbnailHoverMenu} = require('./menus');
@@ -70,7 +71,6 @@ class AppGroup {
             appInfo: params.app.get_app_info(),
             metaWindows: params.metaWindows || [],
             windowCount: params.metaWindows ? params.metaWindows.length : 0,
-            notificationCount: 0,
             lastFocused: params.metaWindow || null,
             isFavoriteApp: !params.metaWindow ? true : params.isFavoriteApp === true,
             autoStartIndex: this.state.autoStartApps.findIndex( app => app.id === params.appId),
@@ -100,6 +100,7 @@ class AppGroup {
         this.labelVisiblePref = this.state.settings.titleDisplay !== TitleDisplay.None && this.state.isHorizontal;
         this.drawLabel = this.labelVisiblePref;
         this.progress = 0;
+        this.notifications = [];
 
         this.actor =  new Cinnamon.GenericContainer({
             name: 'appButton',
@@ -1108,18 +1109,34 @@ class AppGroup {
         this.checkFocusStyle();
     }
 
-    incrementNotificationCount() {
+    addNotification(notification) {
         if (this.groupState.willUnmount) return;
 
-        this.groupState.set({ notificationCount: this.groupState.notificationCount + 1 });
+        this.notifications.push(notification);
+        notification.connect('destroy',  () => this.removeNotification(notification));
         this.updateNotificationsBadge();
     }
 
-    resetNotificationCount() {
+    removeNotification(notification) {
         if (this.groupState.willUnmount) return;
     
-        this.groupState.set({ notificationCount : 0 });
-        this.updateNotificationsBadge();
+        const index = this.notifications.indexOf(notification);
+        if (index > -1) {
+            this.notifications.splice(index, 1)
+            this.updateNotificationsBadge();
+        }
+    }
+
+    removeAllNotifications() {
+        if (this.groupState.willUnmount) return;
+    
+        if (this.notifications.length > 0) {
+            this.notifications.forEach(notification => {
+                notification.destroy(NotificationDestroyedReason.DISMISSED);
+            });
+            this.notifications = [];
+            this.updateNotificationsBadge();
+        }
     }
 
     calcWindowNumber() {
@@ -1139,8 +1156,8 @@ class AppGroup {
     }
 
     updateNotificationsBadge(){
-        if (this.groupState.notificationCount > 0) {
-            this.notificationsBadgeLabel.text = this.groupState.notificationCount.toString();
+        if (this.notifications.length > 0) {
+            this.notificationsBadgeLabel.text = this.notifications.length.toString();
             this.notificationsBadge.show();
         } else {
             this.notificationsBadge.hide();

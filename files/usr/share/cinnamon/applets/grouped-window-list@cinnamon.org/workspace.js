@@ -33,7 +33,7 @@ class Workspace {
             updateFocusState: (focusedAppId) => {
                 this.appGroups.forEach( appGroup => {
                     if (focusedAppId === appGroup.groupState.appId) {
-                        appGroup.resetNotificationCount();
+                        appGroup.removeAllNotifications();
                         return;
                     }
                     appGroup.onFocusChange(false);
@@ -113,7 +113,7 @@ class Workspace {
 
         this.appGroups.forEach(appGroup => {
             if (appId === appGroup.groupState.appId) {
-                appGroup.incrementNotificationCount();
+                appGroup.addNotification(notification);
                 return;
             }
         });
