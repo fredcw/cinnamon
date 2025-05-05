@@ -10,7 +10,6 @@ const PopupMenu = imports.ui.popupMenu;
 const Mainloop = imports.mainloop;
 const {SignalManager} = imports.misc.signalManager;
 const {unref} = imports.misc.util;
-const NotificationDestroyedReason = imports.ui.messageTray.NotificationDestroyedReason;
 
 const createStore = require('./state');
 const {AppMenuButtonRightClickMenu, HoverMenuController, AppThumbnailHoverMenu} = require('./menus');
@@ -100,7 +99,6 @@ class AppGroup {
         this.labelVisiblePref = this.state.settings.titleDisplay !== TitleDisplay.None && this.state.isHorizontal;
         this.drawLabel = this.labelVisiblePref;
         this.progress = 0;
-        this.notifications = [];
 
         this.actor =  new Cinnamon.GenericContainer({
             name: 'appButton',
@@ -193,6 +191,7 @@ class AppGroup {
         this.calcWindowNumber();
         this.on_orientation_changed(true);
         this.handleFavorite();
+        this.state.notifications.addAppGroup(this);
     }
 
     initThumbnailMenu() {
@@ -426,7 +425,7 @@ class AppGroup {
         this.windowsBadge.allocate(childBox, flags);
 
         // Set notifications badge position
-        childBox.x2 = box.x2;
+        childBox.x2 = this.iconBox.x + this.iconBox.width;
         childBox.x1 = childBox.x2 - this.notificationsBadgeLabel.width;
         childBox.y1 = box.y1;
         childBox.y2 = childBox.y1 + this.notificationsBadge.get_preferred_height(childBox.get_width())[1];
@@ -954,7 +953,7 @@ class AppGroup {
             this.setIcon(metaWindow)
 
             this.calcWindowNumber();
-            this.updateNotificationsBadge();
+            this.state.notifications.updateNotificationsBadge(this);
             this.onFocusChange();
         }
         set({
@@ -1109,36 +1108,6 @@ class AppGroup {
         this.checkFocusStyle();
     }
 
-    addNotification(notification) {
-        if (this.groupState.willUnmount) return;
-
-        this.notifications.push(notification);
-        notification.connect('destroy',  () => this.removeNotification(notification));
-        this.updateNotificationsBadge();
-    }
-
-    removeNotification(notification) {
-        if (this.groupState.willUnmount) return;
-    
-        const index = this.notifications.indexOf(notification);
-        if (index > -1) {
-            this.notifications.splice(index, 1)
-            this.updateNotificationsBadge();
-        }
-    }
-
-    removeAllNotifications() {
-        if (this.groupState.willUnmount) return;
-    
-        if (this.notifications.length > 0) {
-            this.notifications.forEach(notification => {
-                notification.destroy(NotificationDestroyedReason.DISMISSED);
-            });
-            this.notifications = [];
-            this.updateNotificationsBadge();
-        }
-    }
-
     calcWindowNumber() {
         if (this.groupState.willUnmount) return;
 
@@ -1152,15 +1121,6 @@ class AppGroup {
             this.windowsBadge.show();
         } else {
             this.windowsBadge.hide();
-        }
-    }
-
-    updateNotificationsBadge(){
-        if (this.notifications.length > 0) {
-            this.notificationsBadgeLabel.text = this.notifications.length.toString();
-            this.notificationsBadge.show();
-        } else {
-            this.notificationsBadge.hide();
         }
     }
 
