@@ -340,7 +340,7 @@ Extension.prototype = {
             let meta_roles = meta_role_list_str.replaceAll(" ", "").split(",");
             for (let role of meta_roles) {
                 if (!(role in Type[this.upperType].roles)) {
-                    throw logError(`Unknown role definition: ${role} in metadata.json`, this.uuid);
+                    global.logWarning(`[${this.uuid}] Unknown role definition: ${role} in metadata.json`);
                 }
             }
         }
@@ -433,6 +433,10 @@ Extension.prototype = {
 
             if (roleProvider != null) {
                 for (let role of avail_roles) {
+                    if (!(role in Type[this.upperType].roles)) {
+                        // Ignore unrecognised roles for backward compatibility
+                        continue;
+                    }
                     Type[this.upperType].roles[role] = this.uuid;
                     this.roleProvider = roleProvider;
                     global.log(`Role locked: ${role}`);
