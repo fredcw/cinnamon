@@ -2066,14 +2066,14 @@ var PopupMenu = class PopupMenu extends PopupMenuBase {
             case St.Side.TOP:
             case St.Side.BOTTOM:
                 // get center position of the actor and calculate the position needed to center the menu on the actor
-                let xCenter = (this._slidePosition == -1) ? sourceBox.x1 + (sourceBox.x2 - sourceBox.x1) / 2 : this._slidePosition;
+                const xCenter = (this._slidePosition == -1) ? sourceBox.x1 + (sourceBox.x2 - sourceBox.x1) / 2 : this._slidePosition;
                 xPos = xCenter - (natWidth / 2);
 
                 // we don't want to go off the screen so we adjust if needed
                 if (xPos < x1) xPos = x1;
                 else if (xPos + natWidth > x2) xPos = x2 - natWidth;
 
-                // now we calculate the x position based on the orientation
+                // now we calculate the y position based on the orientation
                 if (this._orientation === St.Side.BOTTOM || (y2 - sourceBox.y2) < natHeight) {
                     this.sideFlipped = true;
                     yPos = y2 - natHeight;
@@ -2085,8 +2085,9 @@ var PopupMenu = class PopupMenu extends PopupMenuBase {
                 break;
             case St.Side.LEFT:
             case St.Side.RIGHT:
-                // align the top of the menu with the top of the source
-                yPos = (this._slidePosition == -1) ? sourceBox.y1 : this._slidePosition;
+                // get center position of the actor and calculate the position needed to center the menu on the actor
+                const yCenter = (this._slidePosition == -1) ? sourceBox.y1 + (sourceBox.y2 - sourceBox.y1) / 2 : this._slidePosition;
+                yPos = yCenter - (natHeight / 2);
 
                 // we don't want to go off the screen so we adjust if needed
                 if (yPos < y1) yPos = y1;
